@@ -12,6 +12,17 @@ const DEFAULT_CATEGORIES = [
   "European", "Latin American", "American", "Dessert", "Other",
 ];
 
+// Firebase web config is not a secret — it's safe to commit. Access is
+// controlled by the Firestore security rules, not by hiding this object.
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDzH_aRriyK_GfaKGVOVut4T9_Wq9LDx1Q",
+  authDomain: "recipes-ba8a8.firebaseapp.com",
+  projectId: "recipes-ba8a8",
+  storageBucket: "recipes-ba8a8.firebasestorage.app",
+  messagingSenderId: "288662525390",
+  appId: "1:288662525390:web:5602f7975aceb520d4879f",
+};
+
 const CONFIG_KEY = "recipeAppConfig";
 const CUSTOM_CATEGORIES_KEY = "recipeAppCustomCategories";
 
@@ -58,20 +69,8 @@ function allCategories() {
 
 // ---------- Firebase ----------
 
-function firebaseConfigured() {
-  return config.fbApiKey && config.fbProjectId && config.fbAppId;
-}
-
 async function initFirebase() {
-  if (!firebaseConfigured()) return;
-  const app = initializeApp({
-    apiKey: config.fbApiKey,
-    authDomain: config.fbAuthDomain,
-    projectId: config.fbProjectId,
-    storageBucket: config.fbStorageBucket,
-    messagingSenderId: config.fbMessagingSenderId,
-    appId: config.fbAppId,
-  });
+  const app = initializeApp(FIREBASE_CONFIG);
   const auth = getAuth(app);
   await signInAnonymously(auth);
   db = getFirestore(app);
@@ -360,7 +359,7 @@ async function saveRecipe() {
     return;
   }
   if (!db) {
-    alert("Firebase isn't configured yet. Open Settings and add your Firebase project details.");
+    alert("Still connecting to Firebase — try again in a moment.");
     return;
   }
 
@@ -425,41 +424,20 @@ function openViewModal(r) {
 // ---------- Settings modal ----------
 
 function openSettingsModal() {
-  document.getElementById("fbApiKey").value = config.fbApiKey || "";
-  document.getElementById("fbAuthDomain").value = config.fbAuthDomain || "";
-  document.getElementById("fbProjectId").value = config.fbProjectId || "";
-  document.getElementById("fbStorageBucket").value = config.fbStorageBucket || "";
-  document.getElementById("fbMessagingSenderId").value = config.fbMessagingSenderId || "";
-  document.getElementById("fbAppId").value = config.fbAppId || "";
   document.getElementById("anthropicKey").value = config.anthropicKey || "";
   document.getElementById("anthropicModel").value = config.anthropicModel || "claude-sonnet-5";
-  document.getElementById("connectionStatus").textContent = "";
+  document.getElementById("connectionStatus").textContent = db ? "Connected to Firebase." : "";
+  document.getElementById("connectionStatus").className = db ? "status-text success" : "status-text";
   document.getElementById("settingsModal").classList.remove("hidden");
 }
 
-async function saveSettings() {
+function saveSettings() {
   config = {
-    fbApiKey: document.getElementById("fbApiKey").value.trim(),
-    fbAuthDomain: document.getElementById("fbAuthDomain").value.trim(),
-    fbProjectId: document.getElementById("fbProjectId").value.trim(),
-    fbStorageBucket: document.getElementById("fbStorageBucket").value.trim(),
-    fbMessagingSenderId: document.getElementById("fbMessagingSenderId").value.trim(),
-    fbAppId: document.getElementById("fbAppId").value.trim(),
     anthropicKey: document.getElementById("anthropicKey").value.trim(),
     anthropicModel: document.getElementById("anthropicModel").value,
   };
   saveConfig(config);
   document.getElementById("settingsModal").classList.add("hidden");
-  setStatus("connectionStatus", "Connecting…");
-  try {
-    await initFirebase();
-    if (firebaseConfigured()) {
-      setStatus("connectionStatus", "Connected to Firebase.", "success");
-    }
-  } catch (err) {
-    console.error(err);
-    setStatus("connectionStatus", "Firebase connection failed: " + err.message, "error");
-  }
 }
 
 // ---------- Wiring ----------
@@ -509,11 +487,7 @@ document.querySelectorAll(".modal-overlay").forEach((overlay) => {
 
 // ---------- Init ----------
 
-if (!firebaseConfigured()) {
-  setTimeout(() => {
-    setStatus("connectionStatus", "");
-    openSettingsModal();
-  }, 300);
-} else {
-  initFirebase();
-}
+initFirebase().catch((err) => {
+  console.error(err);
+  alert("Could not connect to Firebase: " + err.message);
+});

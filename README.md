@@ -6,35 +6,28 @@ No build step, no server — plain HTML/CSS/JS, deployable straight to GitHub Pa
 
 ## One-time setup
 
-### 1. Create a Firebase project (for cross-device sync)
+Firebase is already wired up and baked into the app (config in [app.js](app.js) — this is safe to commit; Firebase's web config isn't a secret, access is controlled by the Firestore security rules below, not by hiding it). Nothing to configure there.
 
-1. Go to [console.firebase.google.com](https://console.firebase.google.com) and create a new project (free "Spark" plan is enough).
-2. In the project, go to **Build → Firestore Database → Create database** (start in production mode, pick any region).
-3. Go to **Build → Authentication → Get started → Sign-in method → Anonymous → Enable**. This lets the app authenticate silently without a login screen.
-4. Go to **Project settings (gear icon) → General → Your apps → Add app → Web (</>)**. Register the app (no hosting needed) and copy the config values shown (`apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`).
-5. Go to **Firestore Database → Rules** and set:
-
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /recipes/{recipeId} {
-         allow read, write: if request.auth != null;
-       }
-     }
-   }
-   ```
-
-   This means only signed-in (even anonymously) requests from your app can read/write — not the whole internet.
-
-### 2. Get an Anthropic API key (for AI parsing)
+The only thing each device needs is an Anthropic API key, for the AI parsing step:
 
 1. Go to [console.anthropic.com](https://console.anthropic.com) and create an API key.
-2. Parsing a caption costs a fraction of a cent per recipe.
+2. Open the site, click the ⚙ **Settings** button, and paste it in. It's stored only in that browser's local storage — never written to the repo.
+3. Parsing a recipe costs a fraction of a cent.
 
-### 3. Configure the app
+### Firestore security rules (already applied)
 
-Open the site, click the ⚙ **Settings** button, and paste in the Firebase config values and your Anthropic API key. These are stored only in your browser's local storage — they are never written to any file in this repo, so it's safe to make the repo public.
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /recipes/{recipeId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
+```
+
+This means only signed-in (even anonymously, which the app does automatically) requests can read/write — not the whole internet. If you ever fork this for your own Firebase project, swap the `FIREBASE_CONFIG` object in `app.js` and re-apply this rule.
 
 ## Deploying to GitHub Pages
 
@@ -49,7 +42,7 @@ git push -u origin main
 
 Then on GitHub: **Settings → Pages → Source: Deploy from branch → main / (root)**. Your app will be live at `https://<your-username>.github.io/recipe-book/`.
 
-Each device you use it from (phone, laptop) needs the Settings filled in once — after that, recipes sync automatically through Firestore.
+Each device you use it from (phone, laptop) needs its Anthropic key entered in Settings once — after that, recipes sync automatically through Firestore, no further setup needed.
 
 ## How adding a recipe works
 
