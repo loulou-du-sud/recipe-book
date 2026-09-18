@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recipe Book</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <h1>🍲 Recipe Book</h1>
+  <div class="topbar-actions">
+    <button id="addBtn" class="btn primary">+ Add Recipe</button>
+    <button id="settingsBtn" class="btn ghost" title="Settings">⚙</button>
+  </div>
+</header>
+
+<div class="controls">
+  <input id="searchInput" type="search" placeholder="Search recipes…" />
+  <div id="categoryTabs" class="category-tabs">
+    <button class="tab active" data-category="all">All</button>
+  </div>
+</div>
+
+<main id="recipeGrid" class="recipe-grid">
+  <p id="emptyState" class="empty-state">No recipes yet. Click "+ Add Recipe" to save your first one.</p>
+</main>
+
+<!-- Add / Edit Recipe Modal -->
+<div id="recipeModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add Recipe</h2>
+      <button class="close-btn" data-close>&times;</button>
+    </div>
+
+    <div class="modal-body">
+      <label>Instagram link</label>
+      <input id="igUrlInput" type="url" placeholder="https://www.instagram.com/reel/..." />
+
+      <label>Caption text (optional if you upload a video below)</label>
+      <textarea id="captionInput" rows="6" placeholder="Paste the Instagram caption text..."></textarea>
+
+      <label>Video (optional — lets AI read on-screen text in the video)</label>
+      <input id="videoInput" type="file" accept="video/*" />
+      <p class="hint">Save the reel/video from Instagram first, then upload it here. Only used to grab frames for parsing — it isn't stored.</p>
+
+      <button id="parseBtn" class="btn secondary">✨ Parse with AI</button>
+      <p id="parseStatus" class="status-text"></p>
+
+      <label>Title</label>
+      <input id="titleInput" type="text" placeholder="Recipe title" />
+
+      <label>Category</label>
+      <div class="category-row">
+        <select id="categorySelect"></select>
+        <input id="newCategoryInput" type="text" placeholder="New category name" class="hidden" />
+        <button id="addCategoryBtn" class="btn ghost small">+ New</button>
+      </div>
+
+      <label>Ingredients (one per line)</label>
+      <textarea id="ingredientsInput" rows="6" placeholder="1 cup rice&#10;2 eggs&#10;..."></textarea>
+
+      <label>Steps (one per line)</label>
+      <textarea id="stepsInput" rows="6" placeholder="Step 1...&#10;Step 2...&#10;..."></textarea>
+
+      <label>Notes (optional)</label>
+      <textarea id="notesInput" rows="2" placeholder="Any personal notes"></textarea>
+    </div>
+
+    <div class="modal-footer">
+      <button id="deleteBtn" class="btn danger hidden">Delete</button>
+      <button id="saveBtn" class="btn primary">Save Recipe</button>
+    </div>
+  </div>
+</div>
+
+<!-- View Recipe Modal -->
+<div id="viewModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="viewTitle">Recipe</h2>
+      <button class="close-btn" data-close-view>&times;</button>
+    </div>
+    <div class="modal-body">
+      <p><a id="viewIgLink" href="#" target="_blank" rel="noopener">View on Instagram ↗</a></p>
+      <span id="viewCategoryBadge" class="badge"></span>
+      <h3>Ingredients</h3>
+      <ul id="viewIngredients"></ul>
+      <h3>Steps</h3>
+      <ol id="viewSteps"></ol>
+      <div id="viewNotesWrap">
+        <h3>Notes</h3>
+        <p id="viewNotes"></p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button id="editFromViewBtn" class="btn ghost">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Settings</h2>
+      <button class="close-btn" data-close-settings>&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="hint">These are stored only in this browser (localStorage) — never committed to the repo.</p>
+
+      <h3>Firebase (for cross-device sync)</h3>
+      <label>API Key</label>
+      <input id="fbApiKey" type="text" />
+      <label>Auth Domain</label>
+      <input id="fbAuthDomain" type="text" placeholder="your-project.firebaseapp.com" />
+      <label>Project ID</label>
+      <input id="fbProjectId" type="text" />
+      <label>Storage Bucket</label>
+      <input id="fbStorageBucket" type="text" placeholder="your-project.appspot.com" />
+      <label>Messaging Sender ID</label>
+      <input id="fbMessagingSenderId" type="text" />
+      <label>App ID</label>
+      <input id="fbAppId" type="text" />
+
+      <h3>Anthropic (for AI parsing)</h3>
+      <label>API Key</label>
+      <input id="anthropicKey" type="password" placeholder="sk-ant-..." />
+      <label>Model</label>
+      <select id="anthropicModel">
+        <option value="claude-sonnet-5">claude-sonnet-5 (recommended)</option>
+        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (cheaper/faster)</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <span id="connectionStatus" class="status-text"></span>
+      <button id="saveSettingsBtn" class="btn primary">Save Settings</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
