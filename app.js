@@ -209,20 +209,35 @@ function extractFrames(file, numFrames = 5, maxWidth = 480) {
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
+    video.setAttribute("playsinline", "");
+    video.preload = "auto";
     const url = URL.createObjectURL(file);
     video.src = url;
+    video.load();
 
     const frames = [];
     let canvas, ctx;
 
     const cleanup = () => URL.revokeObjectURL(url);
 
+    const loadTimeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("The video took too long to load. Try a shorter recording."));
+    }, 20000);
+
     video.addEventListener("error", () => {
+      clearTimeout(loadTimeout);
       cleanup();
       reject(new Error("Could not read that video file."));
     });
 
-    video.addEventListener("loadedmetadata", async () => {
+    video.addEventListener("loadeddata", async () => {
+      clearTimeout(loadTimeout);
+      if (!video.videoWidth || !isFinite(video.duration)) {
+        cleanup();
+        reject(new Error("Could not read that video's size or length."));
+        return;
+      }
       const scale = Math.min(1, maxWidth / video.videoWidth);
       canvas = document.createElement("canvas");
       canvas.width = Math.round(video.videoWidth * scale);
@@ -250,11 +265,13 @@ function extractFrames(file, numFrames = 5, maxWidth = 480) {
 
 function seekTo(video, time) {
   return new Promise((resolve) => {
-    const onSeeked = () => {
-      video.removeEventListener("seeked", onSeeked);
+    const finish = () => {
+      clearTimeout(timer);
+      video.removeEventListener("seeked", finish);
       resolve();
     };
-    video.addEventListener("seeked", onSeeked);
+    const timer = setTimeout(finish, 4000);
+    video.addEventListener("seeked", finish);
     video.currentTime = time;
   });
 }
