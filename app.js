@@ -263,6 +263,27 @@ function extractFrames(file, numFrames = 5, maxWidth = 480) {
   });
 }
 
+async function pickGeminiModel() {
+  const fallback = "gemini-3.6-flash";
+  try {
+    const resp = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models?pageSize=200",
+      { headers: { "x-goog-api-key": config.geminiKey } },
+    );
+    if (!resp.ok) return fallback;
+    const { models = [] } = await resp.json();
+    const candidates = models
+      .filter((m) => (m.supportedGenerationMethods || []).includes("generateContent"))
+      .map((m) => m.name.replace(/^models\//, ""))
+      .filter((n) => /flash/.test(n) && !/lite|image|tts|live|audio|robotics|embed/.test(n))
+      .map((n) => ({ n, v: parseFloat((n.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1]) || 0, stable: !/preview|exp/.test(n) }));
+    candidates.sort((a, b) => b.v - a.v || Number(b.stable) - Number(a.stable));
+    return candidates[0]?.n || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 function seekTo(video, time) {
   return new Promise((resolve) => {
     const finish = () => {
@@ -320,8 +341,10 @@ ${caption ? `\nCaption:\n"""\n${caption}\n"""` : "\n(No caption provided — rel
       for (const frame of frames) {
         parts.push({ inline_data: { mime_type: "image/jpeg", data: frame } });
       }
+      const model = await pickGeminiModel();
+      setStatus("parseStatus", `Parsing with ${model}…`);
       const resp = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
         {
           method: "POST",
           headers: { "content-type": "application/json", "x-goog-api-key": config.geminiKey },
