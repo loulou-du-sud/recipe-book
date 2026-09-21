@@ -284,8 +284,9 @@ async function parseWithAI() {
     setStatus("parseStatus", "Paste the caption text or upload a video first.", "error");
     return;
   }
-  if (!config.anthropicKey) {
-    setStatus("parseStatus", "Add your Anthropic API key in Settings first.", "error");
+  const provider = config.provider || "gemini";
+  if (provider === "gemini" ? !config.geminiKey : !config.anthropicKey) {
+    setStatus("parseStatus", "Add your AI API key in Settings (⚙) first.", "error");
     return;
   }
 
@@ -313,36 +314,59 @@ Rules:
 - If there's no real recipe content, do your best guess from context but keep arrays possibly short.
 ${caption ? `\nCaption:\n"""\n${caption}\n"""` : "\n(No caption provided — rely on the video frames.)"}`;
 
-    const content = [{ type: "text", text: promptText }];
-    for (const frame of frames) {
-      content.push({
-        type: "image",
-        source: { type: "base64", media_type: "image/jpeg", data: frame },
+    let text;
+    if (provider === "gemini") {
+      const parts = [{ text: promptText }];
+      for (const frame of frames) {
+        parts.push({ inline_data: { mime_type: "image/jpeg", data: frame } });
+      }
+      const resp = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-goog-api-key": config.geminiKey },
+          body: JSON.stringify({
+            contents: [{ role: "user", parts }],
+            generationConfig: { responseMimeType: "application/json" },
+          }),
+        },
+      );
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`API error ${resp.status}: ${errText.slice(0, 200)}`);
+      }
+      const data = await resp.json();
+      text = (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || "").join("").trim();
+    } else {
+      const content = [{ type: "text", text: promptText }];
+      for (const frame of frames) {
+        content.push({
+          type: "image",
+          source: { type: "base64", media_type: "image/jpeg", data: frame },
+        });
+      }
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-api-key": config.anthropicKey,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
+        body: JSON.stringify({
+          model: config.anthropicModel || "claude-sonnet-5",
+          max_tokens: 1500,
+          messages: [{ role: "user", content }],
+        }),
       });
+      if (!resp.ok) {
+        const errText = await resp.text();
+        throw new Error(`API error ${resp.status}: ${errText.slice(0, 200)}`);
+      }
+      const data = await resp.json();
+      text = data.content.map((b) => b.text || "").join("").trim();
     }
 
-    const resp = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": config.anthropicKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
-      },
-      body: JSON.stringify({
-        model: config.anthropicModel || "claude-sonnet-5",
-        max_tokens: 1500,
-        messages: [{ role: "user", content }],
-      }),
-    });
-
-    if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`API error ${resp.status}: ${errText.slice(0, 200)}`);
-    }
-
-    const data = await resp.json();
-    const text = data.content.map((b) => b.text || "").join("").trim();
     const jsonText = text.replace(/^```(json)?/i, "").replace(/```$/, "").trim();
     const parsed = JSON.parse(jsonText);
 
@@ -440,9 +464,18 @@ function openViewModal(r) {
 
 // ---------- Settings modal ----------
 
+function syncProviderFields() {
+  const isGemini = document.getElementById("provider").value === "gemini";
+  document.getElementById("geminiFields").classList.toggle("hidden", !isGemini);
+  document.getElementById("anthropicFields").classList.toggle("hidden", isGemini);
+}
+
 function openSettingsModal() {
+  document.getElementById("provider").value = config.provider || "gemini";
+  document.getElementById("geminiKey").value = config.geminiKey || "";
   document.getElementById("anthropicKey").value = config.anthropicKey || "";
   document.getElementById("anthropicModel").value = config.anthropicModel || "claude-sonnet-5";
+  syncProviderFields();
   document.getElementById("connectionStatus").textContent = db ? "Connected to Firebase." : "";
   document.getElementById("connectionStatus").className = db ? "status-text success" : "status-text";
   document.getElementById("settingsModal").classList.remove("hidden");
@@ -450,6 +483,8 @@ function openSettingsModal() {
 
 function saveSettings() {
   config = {
+    provider: document.getElementById("provider").value,
+    geminiKey: document.getElementById("geminiKey").value.trim(),
     anthropicKey: document.getElementById("anthropicKey").value.trim(),
     anthropicModel: document.getElementById("anthropicModel").value,
   };
@@ -465,6 +500,7 @@ document.getElementById("parseBtn").addEventListener("click", parseWithAI);
 document.getElementById("saveBtn").addEventListener("click", saveRecipe);
 document.getElementById("deleteBtn").addEventListener("click", deleteRecipe);
 document.getElementById("saveSettingsBtn").addEventListener("click", saveSettings);
+document.getElementById("provider").addEventListener("change", syncProviderFields);
 document.getElementById("editFromViewBtn").addEventListener("click", () => openEditModal(viewingRecipe));
 
 document.querySelectorAll("[data-close]").forEach((el) => el.addEventListener("click", closeRecipeModal));

@@ -111,14 +111,27 @@
     <div class="modal-body">
       <p class="hint">Stored only in this browser (localStorage) — never committed to the repo. Firebase sync is already built in, nothing to configure there.</p>
 
-      <h3>Anthropic (for AI parsing)</h3>
-      <label>API Key</label>
-      <input id="anthropicKey" type="password" placeholder="sk-ant-..." />
-      <label>Model</label>
-      <select id="anthropicModel">
-        <option value="claude-sonnet-5">claude-sonnet-5 (recommended)</option>
-        <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (cheaper/faster)</option>
+      <h3>AI parsing</h3>
+      <label>Provider</label>
+      <select id="provider">
+        <option value="gemini">Google Gemini (free tier, no credit card)</option>
+        <option value="anthropic">Anthropic Claude (paid)</option>
       </select>
+
+      <div id="geminiFields">
+        <label>Gemini API key (free at aistudio.google.com/apikey)</label>
+        <input id="geminiKey" type="password" placeholder="AIza..." />
+      </div>
+
+      <div id="anthropicFields" class="hidden">
+        <label>Anthropic API key</label>
+        <input id="anthropicKey" type="password" placeholder="sk-ant-..." />
+        <label>Model</label>
+        <select id="anthropicModel">
+          <option value="claude-sonnet-5">claude-sonnet-5 (recommended)</option>
+          <option value="claude-haiku-4-5-20251001">claude-haiku-4-5-20251001 (cheaper/faster)</option>
+        </select>
+      </div>
     </div>
     <div class="modal-footer">
       <span id="connectionStatus" class="status-text"></span>
